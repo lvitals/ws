@@ -203,6 +203,45 @@ void update(const char* atopPos, int hScroll, int tabSize, int atopRow,
                 p++;
                 continue;
             }
+            else if (*p == '\f')        // page break
+            {
+                short* nextRow = &screenImage[row+1][0];
+                bool dirty = FALSE;
+                if (!(attrib & AT_REVERSE) && comment1Line)
+                    attrib &= ~AT_BOLD;
+
+                short* limit = isBuffer ? nextRow - 1 : nextRow;
+                while (ip < limit)
+                {
+                    if (*ip != ' ')
+                    {
+                        *ip = ' ';
+                        dirty = TRUE;
+                    }
+                    ip++;
+                }
+
+                if (dirty)
+                {
+                    if (!cursorGood) gotoxy(max(col, 0), row);
+                    cursorGood = TRUE;
+                    clearLineC();
+                    curDispAttr = 0;
+                }
+
+                if (isBuffer) {
+                    gotoxy(screenWd - 1, row);
+                    putChar('P');
+                    *ip = 'P';
+                }
+                ip++;
+                cursorGood = FALSE;
+
+                row++;
+                col = -hScroll;
+                p++;
+                continue;
+            }
             else if (*p == '\t')                // TAB
             {
                 int textWidth = isBuffer ? screenWd - 2 : screenWd -1;

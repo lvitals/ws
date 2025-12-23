@@ -160,6 +160,7 @@ o EOL |clipbd |       |clipbd |clipbd|\n",
 "  ^KR\"filename\"   insert file at cursor\n",
 "  ^KW\"filename\"   write tag-to-cursor to new file\n",
 "Other:\n",
+" ^QP           insert page break\n",
 " ^QT\"n\"   set TAB spacing for this file (n= 4, 8, etc.)\n",
 " ^Q<space>  enter a short macro, repeatable with ^L\n",
 " ^KD,  ^KX  save buffer 0 and exit editor,   ^QQ  exit the editor\n",
@@ -689,6 +690,12 @@ void doQcommand(int ch)
                             topRow = topB;
                             botRow = botB;
                         }
+                        cmdState = 0;
+                        break;
+
+                    case 'P':           // insert page break
+                        insert(bcursPos, "\f", 1);
+                        bcursPos++;
                         cmdState = 0;
                         break;
 
