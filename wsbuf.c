@@ -130,7 +130,7 @@ void putAttrChar(char c, int cAttr)
 // aborts update if a key is pressed.
 
 void update(const char* atopPos, int hScroll, int tabSize, int atopRow,
-            int abotRow)
+            int abotRow, bool isBuffer)
 {
 #ifdef TERM_COLORS
     setForeColor(BLACK);
@@ -152,21 +152,27 @@ void update(const char* atopPos, int hScroll, int tabSize, int atopRow,
     for (p = atopPos; row <= abotRow; )
     {
         if (p == bcursPos)
-            if (!atEOT)
-            {
-                cursRow = row;
-                cursCol = col;
-            }
+        {
+            cursRow = row;
+            cursCol = col;
+        }
+
+        if (*p == 0) {
+            atEOT = TRUE;
+            break;
+        }
+
         if ( *p < ' ')
         {
-            if ((*p == '\n') || *p == 0)        // '\n' or EOF
+            if (*p == '\n')        // '\n'
             {
                 short* nextRow = &screenImage[row+1][0];
                 bool dirty = FALSE;
                 if (!(attrib & AT_REVERSE) && comment1Line)
                     attrib &= ~AT_BOLD;
 
-                while (ip < nextRow)
+                short* limit = isBuffer ? nextRow - 1 : nextRow;
+                while (ip < limit)
                 {
                     if (*ip != ' ')
                     {
@@ -175,30 +181,35 @@ void update(const char* atopPos, int hScroll, int tabSize, int atopRow,
                     }
                     ip++;
                 }
+
                 if (dirty)
                 {
-                    if (!cursorGood)
-                        gotoxy(max(col, 0), row);
+                    if (!cursorGood) gotoxy(max(col, 0), row);
                     cursorGood = TRUE;
-                    if (row < screenHt-1 || col < screenWd-1)
-                    {
-                        clearLineC();
-                        curDispAttr = 0;
-                    }
-                    if (row < screenHt-1)
-                        gotoxy(0, row + 1);
+                    clearLineC();
+                    curDispAttr = 0;
                 }
-                else
-                    cursorGood = FALSE;
+
+                if (isBuffer) {
+                    gotoxy(screenWd - 1, row);
+                    putChar('<');
+                    *ip = '<';
+                }
+                ip++;
+                cursorGood = FALSE;
+
                 row++;
                 col = -hScroll;
+                p++;
+                continue;
             }
             else if (*p == '\t')                // TAB
             {
+                int textWidth = isBuffer ? screenWd - 2 : screenWd -1;
                 int tabcol = col + hScroll + tabSize;
                 tabcol = tabcol - (tabcol % tabSize) - hScroll;
                 do {
-                    if (col >= 0 && col < screenWd-1)
+                    if (col >= 0 && col < textWidth)
                         putAttrChar(' ', 0);
                     else
                     {
@@ -209,7 +220,8 @@ void update(const char* atopPos, int hScroll, int tabSize, int atopRow,
             }
             else                    // it's a generic control character
             {
-                if (col >= 0 && col < screenWd-2)
+                int textWidth = isBuffer ? screenWd - 3 : screenWd - 2;
+                if (col >= 0 && col < textWidth)
                 {
                     putAttrChar('^', 0);
                     putAttrChar(*p + 0x40, 0);
@@ -223,27 +235,16 @@ void update(const char* atopPos, int hScroll, int tabSize, int atopRow,
         }
         else
         {
-            if (col >= 0 && col < screenWd-1)       // other text
+            int textWidth = isBuffer ? screenWd - 2 : screenWd - 1;
+            if (col >= 0 && col < textWidth)       // other text
             {
                 int cAttr = attrib + *p;
-
-                // turn on bold attribute if a comment
-                if (*p == '/' && *(p+1) == '/')
-                {
-                    attrib |= AT_BOLD;
-                    comment1Line = TRUE;
-                }
-                else if (*p == '/' && *(p+1) == '*')
-                {
-                    attrib |= AT_BOLD;
-                    comment1Line = FALSE;
-                }
+                if (*p == '/' && *(p+1) == '/') { attrib |= AT_BOLD; comment1Line = TRUE; }
+                else if (*p == '/' && *(p+1) == '*') { attrib |= AT_BOLD; comment1Line = FALSE; }
 
                 putAttrChar(*p, cAttr);
 
-                if (p > atopPos && *(p-1) == '*' && *p == '/')
-                    attrib &= ~AT_BOLD;
-
+                if (p > atopPos && *(p-1) == '*' && *p == '/') attrib &= ~AT_BOLD;
             }
             else
             {
@@ -252,10 +253,55 @@ void update(const char* atopPos, int hScroll, int tabSize, int atopRow,
                 col++;
             }
         }
-        if (*p != 0)
-            p++;
-        else
-            atEOT = TRUE;
+        p++;
+    }
+
+    if (atEOT) {
+        // Clear rest of the last line of text
+        short* nextRow = &screenImage[row+1][0];
+        bool dirty = false;
+        short* limit = isBuffer ? nextRow - 1 : nextRow;
+        while (ip < limit) { 
+            if (*ip != ' ') { *ip = ' '; dirty = true; }
+            ip++;
+        }
+        if (dirty) {
+            if (!cursorGood) gotoxy(max(col, 0), row);
+            clearLineC();
+        }
+
+        // Draw tilde on the next line
+        row++;
+        if(row <= abotRow) {
+            ip = &screenImage[row][0];
+            if (isBuffer) {
+                gotoxy(screenWd - 1, row-1);
+                putChar('~');
+                *(ip-1) = '~';
+            }
+            
+            // Clear all following lines
+            while(row <= abotRow) {
+                nextRow = &screenImage[row+1][0];
+                limit = isBuffer ? nextRow - 1 : nextRow;
+                dirty = false;
+                while (ip < limit) {
+                    if (*ip != ' ') { *ip = ' '; dirty = true; }
+                    ip++;
+                }
+                if (dirty) {
+                    gotoxy(0, row);
+                    clearLineC();
+                }
+                if(isBuffer) {
+                    *ip = ' ';
+                    gotoxy(screenWd -1, row);
+                    putChar(' ');
+                }
+                ip++;
+                row++;
+            }
+        }
     }
 
     normalMode();

@@ -220,7 +220,7 @@ void Error_report(const Error* e) {
     if (e && e->message) {
         snprintf(errLine, 199, "\nERROR: %s\n", e->message);
         attrib = AT_REVERSE + AT_BOLD;
-        update(errLine, 0, 4, screenHt-2, screenHt-1);
+        update(errLine, 0, 4, screenHt-2, screenHt-1, false);
         attrib = 0;
     }
 }
@@ -288,34 +288,34 @@ void updateWindows()
             char s[MAX_LINE];
             snprintf(s, MAX_LINE, " buffer=%d ", buffB);
             memcpy(divideLine + screenWd/2 - 5, s, strlen(s));
-            update(divideLine, 0, 0, screenHt/2, screenHt/2);
+            update(divideLine, 0, 0, screenHt/2, screenHt/2, false);
             attrib = 0;
             if (topWindow)
             {
                 update(buffer[buffB].topRowPos, buffer[buffB].hScroll,
-                 buffer[buffB].tabSize, topB, botB);
+                 buffer[buffB].tabSize, topB, botB, true);
                 update(buffer[buffA].topRowPos, buffer[buffA].hScroll,
-                 buffer[buffA].tabSize, topA, botA);
+                 buffer[buffA].tabSize, topA, botA, true);
             }
             else
             {
                 update(buffer[buffA].topRowPos, buffer[buffA].hScroll,
-                 buffer[buffA].tabSize, topA, botA);
+                 buffer[buffA].tabSize, topA, botA, true);
                 update(buffer[buffB].topRowPos, buffer[buffB].hScroll,
-                 buffer[buffB].tabSize, topB, botB);
+                 buffer[buffB].tabSize, topB, botB, true);
             }
         }
         else
         {
             attrib = 0;
-            update(btopRowPos, bhScroll, btabSize, topRow, botRow);
+            update(btopRowPos, bhScroll, btabSize, topRow, botRow, true);
         }
         if (cursCol < 0)
         {
             bhScroll = max(bhScroll - screenWd/2, 0);
             notUpdated = TRUE;
         }
-        if (cursCol >= screenWd-1)
+        if (cursCol >= screenWd-2)
         {
             bhScroll += screenWd/2;
             notUpdated = TRUE;
@@ -354,7 +354,7 @@ void updateWindows()
     if (bcursPos != lastCursPos)
     {
         attrib = AT_REVERSE + AT_BOLD;
-        update(statusLine, 0, 0, 0, 0);
+        update(statusLine, 0, 0, 0, 0, false);
         attrib = 0;
         gotoxy(cursCol, cursRow);
         cursToLineChar();
@@ -364,7 +364,7 @@ void updateWindows()
     snprintf(s, MAX_LINE, "%-4d,%-3d", lineNum, charNum);
     memcpy(statusLine + screenWd - 20, s, strlen(s));
     attrib = AT_REVERSE + AT_BOLD;
-    update(statusLine, 0, 0, 0, 0);
+    update(statusLine, 0, 0, 0, 0, false);
     attrib = 0;
 }
 
@@ -430,7 +430,7 @@ void saveIfOpen()
                 snprintf(cmdLine, MAX_LINE,
                     "\n Save buffer %d (Yes/No/Cancel)?\n", b);
             }
-            update(cmdLine, 0, 0, screenHt-2, screenHt-1);
+            update(cmdLine, 0, 0, screenHt-2, screenHt-1, false);
             attrib = 0;
             gotoxy(strlen(cmdLine)-2, screenHt-1);
             waitKey(&key);                  // wait for key
@@ -494,7 +494,7 @@ void centerCursor()
 
 void sayWait()
 {
-    update("WAIT\n", 0, 8, screenHt-1, screenHt-1);
+    update("WAIT\n", 0, 8, screenHt-1, screenHt-1, false);
 }
 
 // ----------------------------------------------------------------------------
@@ -564,7 +564,7 @@ void findReplace(const char* findStr, int findStrLen, const char* replStr, int r
                         key = NO_KEY;
                         updateWindows();
                         attrib = AT_REVERSE + AT_BOLD;
-                        update("\nReplace (Y/N/C)?\n", 0, 0, screenHt-2, screenHt-1);
+                        update("\nReplace (Y/N/C)?\n", 0, 0, screenHt-2, screenHt-1, false);
                         attrib = 0;
                         gotoxy(cursCol, cursRow);
                         waitKey(&key);
@@ -858,13 +858,13 @@ doexit:
                         for ( ; row < screenHt-1 &&
                          (more = (help[line][0] != '\0')); row++, line++)
                             update(help[line], 0, 8,
-                                row, row);
+                                row, row, false);
                         if (more)
                             update(" -- more -- (ESC to cancel)\n", 0, 8, row,
-                                    row);
+                                    row, false);
                         else
                             for ( ; row < screenHt; row++)
-                                update("\n", 0, 8, row, row);
+                                update("\n", 0, 8, row, row, false);
                         key = NO_KEY;
                         waitKey(&key);
                     } while (key != CH_ESC && more);
@@ -1254,11 +1254,11 @@ void getCommand(const char* msg, bool isFile)
         *p = '-';
     snprintf(p, SCRMAXWD, "\n%s  (<esc> to cancel)\n", msg);
     attrib = AT_REVERSE + AT_BOLD;
-    update(cmdLine, 0, 8, screenHt-3, screenHt-1);
+    update(cmdLine, 0, 8, screenHt-3, screenHt-1, false);
     attrib = 0;
     clearBuffer();
     do {
-        update(bstart, 0, 8, screenHt-1, screenHt-1);
+        update(bstart, 0, 8, screenHt-1, screenHt-1, true);
         gotoxy(cursCol, cursRow);
         waitKey(&key);                  // wait for key
         if (key == CH_CR)
@@ -1571,9 +1571,9 @@ int main(int argc, const char** argv)
                     *p = '-';
                 *p++ = '\n';
                 *p = 0;
-                update(sTmp, 0, 8, screenHt-2, screenHt-1);
+                update(sTmp, 0, 8, screenHt-2, screenHt-1, false);
                 attrib = 0;
-                update(Intro, 0, 8, screenHt-1, screenHt-1);
+                update(Intro, 0, 8, screenHt-1, screenHt-1, false);
                 startup = FALSE;
             }
 
@@ -1720,7 +1720,7 @@ int main(int argc, const char** argv)
                 else
                     replace(bcursPos, key);
 
-                if (cursCol < screenWd-1 && key >= ' ')
+                if (cursCol < screenWd-2 && key >= ' ')
                 {
                     putchar(key);
                     screenImage[cursRow][cursCol] = key;

@@ -150,7 +150,7 @@ extern int  macroLevel;                     // macro recursion level
 extern int  givenTabSize;                   // default tab spacing
 
 void update (const char* atopPos, int hScroll, int tabSize, int atopRow,
-                    int abotRow);
+                    int abotRow, bool isBuffer);
 void movec (const char* src, char* dest, int size);
 void clearBuffer (void);
 void bToBuffer (void);
